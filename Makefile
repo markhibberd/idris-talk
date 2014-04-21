@@ -7,7 +7,7 @@ SANDBOX = .cabal-sandbox
 
 prepare: ${SANDBOX}
 	test -x ${SANDBOX}/bin/alex || cabal install alex
-	test -x ${SANDBOX}/bin/idris || PATH=${SANDBOX}/bin:$$PATH cabal install idris-0.9.12
+	test -x ${SANDBOX}/bin/idris || env PKG_CONFIG_PATH=/usr/local/Cellar/libffi/3.0.11/lib/pkgconfig PATH=${SANDBOX}/bin:$$PATH cabal install -f FFI idris-0.9.12
 
 
 ${SANDBOX}:
