@@ -2,6 +2,12 @@ module Data.TicTacToe
 
 --import Effect.System
 
+data XX
+
+data OO
+
+data Unoccupied
+
 data Player =
  X | O
 
@@ -65,8 +71,8 @@ nToPlayer n = (if (even n) then X else O)
 example : Board ?wlen
 example =
   B (x :: o :: x ::
-     e :: e :: e ::
-     e :: e :: e :: Nil)
+     o :: x :: e ::
+     x :: o :: e :: Nil)
 
 wlen = proof search
 
