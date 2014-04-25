@@ -1,14 +1,18 @@
 MFLAGS = -s
 MAKEFLAGS = $(MFLAGS)
 SANDBOX = .cabal-sandbox
+IDRIS = ${SANDBOX}/bin/idris
 
-.PHONY: prepare
+.PHONY: repl
 
+default: repl
 
-prepare: ${SANDBOX}
+repl: ${IDRIS}
+	${IDRIS} -i src src/Data/TicTacToe
+
+${IDRIS}: ${SANDBOX}
 	test -x ${SANDBOX}/bin/alex || cabal install alex
 	test -x ${SANDBOX}/bin/idris || env PKG_CONFIG_PATH=/usr/local/Cellar/libffi/3.0.11/lib/pkgconfig PATH=${SANDBOX}/bin:$$PATH cabal install -f FFI idris-0.9.12
-
 
 ${SANDBOX}:
 	cabal sandbox init
