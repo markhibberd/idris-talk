@@ -8,7 +8,7 @@ IDRIS = ${SANDBOX}/bin/idris
 default: repl
 
 repl: ${IDRIS}
-	${IDRIS} -i src src/Data/TicTacToe
+	${IDRIS} -p effects -i src src/Data/TicTacToe
 
 ${IDRIS}: ${SANDBOX}
 	test -x ${SANDBOX}/bin/alex || cabal install alex
