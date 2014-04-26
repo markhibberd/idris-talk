@@ -1,0 +1,105 @@
+
+data Won a = WhoWon a
+data Draw
+data InProgress
+
+data Player = PlayerX | PlayerO
+data Cell = Occupied Player | Empty
+
+countOf : Cell -> Nat
+countOf Empty = 0
+countOf (Occupied _) = 1
+
+countOfX : Cell -> Nat
+countOfX Empty = 0
+countOfX (Occupied PlayerX) = 1
+countOfX (Occupied PlayerO) = 0
+
+countOfO : Cell -> Nat
+countOfO Empty = 0
+countOfO (Occupied PlayerX) = 0
+countOfO (Occupied PlayerO) = 1
+
+line : Cell -> Cell -> Cell -> Maybe Type
+line (Occupied PlayerX) (Occupied PlayerX) (Occupied PlayerX) = Just X
+line (Occupied PlayerO) (Occupied PlayerO) (Occupied PlayerO) = Just O
+line _ _ _ = Nothing
+
+winner : Vect 9 Cell -> Maybe Type
+winner (ne :: n  :: nw ::
+        e  :: c  :: w  ::
+        se :: s  :: sw :: Nil) =
+   line ne n nw <|> line e c w <|> line se s sw <|>
+   line ne e se <|> line n c s <|> line nw w sw <|>
+   line ne c sw <|> line nw c se
+
+
+isValid : Vect 9 Cell -> Bool
+isValid v =
+  let xs = sum . map countOfX $ v in
+  let os = sum . map countOfO $ v in
+      xs == os || xs == (S os)
+
+stateOf : Vect 9 Cell -> Type
+stateOf v =
+  case winner v of
+    Just t => t
+    Nothing => if (sum . map countOf $ v) == 9 then Draw else InProgress
+
+data Board : Nat -> Type -> Type where
+  B : (v : Vect 9 Cell) -> {default oh ok : so (isValid v)} -> Board (sum . map countOf $ v) (stateOf bv)
+
+
+x : Cell
+x = Occupied PlayerX
+
+xoo : Cell
+o = Occupied PlayerO
+
+e : Cell
+e = Empty
+
+example : Board ?wlen ?bstate
+example =
+  B (x :: o :: x ::
+     o :: x :: e ::
+     x :: o :: o :: Nil)
+
+wlen = proof search
+bstate = proof search
+
+start : Board ?wlens ?bstates
+start =
+  B (e :: e :: e ::
+     e :: e :: e ::
+     e :: e :: e :: Nil)
+
+wlens = proof search
+bstates = proof search
+
+even :  Nat -> Bool
+even Z = True
+even (S Z) = False
+even (S n) = not (even n)
+nextPlayer : {n: Nat} -> Board n s -> Cell
+nextPlayer {n} _ =
+  Occupied (if even n then PlayerX else PlayerO)
+
+{-
+move : (b: Board n InProgress) -> (p: Position) -> Maybe (Board (S n) ?moveresult)
+move (B (Empty :: n  :: ne :: w  :: c  :: e  :: sw :: s  :: se :: Nil)) NW = B (nextPlayer b :: n :: ne :: w :: c :: e :: sw :: s :: se :: Nil)
+move (B (nw :: Empty  :: ne :: w  :: c  :: e  :: sw :: s  :: se :: Nil)) N  = B (nw :: nextPlayer b :: ne :: w :: c :: e :: sw :: s :: se :: Nil)
+move (B (nw :: n  :: Empty :: w  :: c  :: e  :: sw :: s  :: se :: Nil)) NE = B (nw :: n :: nextPlayer b :: w :: c :: e :: sw :: s :: se :: Nil)
+move (B (nw :: n  :: ne :: Empty  :: c  :: e  :: sw :: s  :: se :: Nil)) W  = B (nw :: n :: ne :: nextPlayer b :: c :: e :: sw :: s :: se :: Nil)
+move (B (nw :: n  :: ne :: w  :: Empty  :: e  :: sw :: s  :: se :: Nil)) C  = B (nw :: n :: ne :: w :: nextPlayer b :: e :: sw :: s :: se :: Nil)
+move (B (nw :: n  :: ne :: w  :: c  :: Empty  :: sw :: s  :: se :: Nil)) E  = B (nw :: n :: ne :: w :: c :: nextPlayer b :: sw :: s :: se :: Nil)
+move (B (nw :: n  :: ne :: w  :: c  :: e  :: Empty :: s  :: se :: Nil)) SW = B (nw :: n :: ne :: w :: c :: e :: nextPlayer b :: s :: se :: Nil)
+move (B (nw :: n  :: ne :: w  :: c  :: e  :: sw :: Empty  :: se :: Nil)) S  = B (nw :: n :: ne :: w :: c :: e :: sw :: nextPlayer b :: se :: Nil)
+move (B (nw :: n  :: ne :: w  :: c  :: e  :: sw :: s  :: Empty :: Nil)) SE = B (nw :: n :: ne :: w :: c :: e :: sw :: s :: nextPlayer b :: Nil)
+move _ _ = Nothing
+-}
+moveresult = proof search
+
+--takeBack : (b: Board n s) -> (p: Position) -> Board (S n) InProgress
+:r
+xo

@@ -1,95 +1,131 @@
 module Data.TicTacToe
 
---import Effect.System
+%default total
 
-data XX
+data Player = PlayerX | PlayerO
+data Cell = CellX | CellO | b
 
-data OO
+toCell : Player -> Cell
+toCell PlayerX = CellX
+toCell PlayerO = CellO
 
-data Unoccupied
+instance Eq Player where
+  PlayerX == PlayerX = True
+  PlayerY == PlayerY = True
+  PlayerX == PlayerY = False
+  PlayerY == PlayerX = False
 
-data Player =
- X | O
+instance Eq Cell where
+  CellX == CellX = True
+  CellO == CellO = True
+  b == b = True
+  CellX == CellO = False
+  CellX == b = False
+  CellO == CellX = False
+  CellO == b = False
+  b == CellX = False
+  b == CellO = False
 
-other : Player -> Player
-other X = O
-other O = X
+Board : Type
+Board = Vect 9 Cell
 
-data Cell =
- F Player | E
+nw : Fin 9
+nw = 0
 
-x : Cell
-x = F X
+n : Fin 9
+n = 1
 
-o : Cell
-o = F O
+ne : Fin 9
+ne = 2
 
-e : Cell
-e = E
+w : Fin 9
+w = 3
 
-countOf : Cell -> Nat
-countOf (F _) = 1
-countOf E = 0
+c : Fin 9
+c = 4
 
-data State =
-  Playing Player | Finished | NotStarted
+e : Fin 9
+e = 5
 
-data Board : Nat -> Type where
-  B : (repr: Vect 9 Cell) -> Board (sum . map countOf $ repr)
+sw : Fin 9
+sw = 6
+
+s : Fin 9
+s = 7
+
+se : Fin 9
+se = 8
+
+startBoard : Board
+startBoard =
+  [b, b, b,
+   b, b, b,
+   b, b, b]
 
 line : Cell -> Cell -> Cell -> Maybe Player
-line (F X) (F X) (F X) = Just X
-line (F O) (F O) (F O) = Just O
-line _ _ _ = Nothing
+line CellX CellX CellX = Just PlayerX
+line CellO CellO CellO = Just PlayerO
+line _ _ _  = Nothing
 
-winner : Board n -> Maybe Player
-winner (B (ne :: n  :: nw ::
-           e  :: c  :: w  ::
-           se :: s  :: sw :: Nil)) =
-   line ne n nw <|> line e c w <|> line se s sw <|>
-   line ne e se <|> line n c s <|> line nw w sw <|>
-   line ne c sw <|> line nw c se
+winner : Board -> Maybe Player
+winner
+  [nw, n,  ne,
+   w,  c,  e,
+   sw, s,  se] =
+  line ne n nw <|> line e c w <|> line se s sw <|> line ne e se <|>
+  line n c s <|> line nw w sw <|> line ne c sw <|> line nw c se
 
-total
-occupied : {n : Nat} -> Board n -> Nat
-occupied {n} _ = n
+countOf : Cell -> Nat
+countOf b = 0
+countOf _ = 1
 
-total
-full : Board n -> Bool
-full b = occupied b == 9
-
-total
 even :  Nat -> Bool
 even Z = True
 even (S Z) = False
 even (S n) = not (even n)
 
-total
-nToPlayer :  Nat -> Player
-nToPlayer n = (if (even n) then X else O)
+occupied : Board -> Nat
+occupied = sum . map countOf
 
-example : Board ?wlen
-example =
-  B (x :: o :: x ::
-     o :: x :: e ::
-     x :: o :: e :: Nil)
+next : Board -> Player
+next board =
+  if even (occupied board) then PlayerX else PlayerO
 
-wlen = proof search
+validMove : Fin 9 -> Player -> Board -> Bool
+validMove position player board =
+  (index position board) == b &&
+    maybe True (\_ => False) (winner board) &&
+      player == next board
 
-{-
-data Board : State -> Type where
-  Init : Board NotStarted
-  Won : Player -> Board Finished
-  Draw : Board Finished
-  InProgress :
-    (p: Player) ->
-    (ne : Cell) -> (n  : Cell) -> (nw : Cell) ->
-    (e  : Cell) -> (c  : Cell) -> (w  : Cell) ->
-    (se : Cell) -> (s  : Cell) -> (sw : Cell) ->
-    Board (Playing (other p))
--}
-{-
-data Game : Effect where
+data Game : Board -> Type where
+  startGame : Game startBoard
+  -- FIX consider adding "load game or similar" that would let me demo the search tactics etc...
+  move : (pos : Fin 9) -> (val : Player) -> {board: Board} -> (game: Game board) -> {default oh ok : so (validMove pos val board)} ->
+         Game (replaceAt pos (toCell val) board)
 
-  MoveX : (Board ) ->
--}
+started : Board -> Bool
+started board =
+  (sum . map countOf $ board) > 0
+
+prevBoard : {board : Board} -> (g : Game board) -> {default oh ok : so (started board)} -> Board
+prevBoard startGame = startBoard
+prevBoard (move pos val {board} game) = board
+
+takeBack : {board : Board} -> (g : Game board) -> {default oh ok : so (started board)} -> Game (prevBoard g {ok})
+takeBack startGame = startGame
+takeBack (move pos val {board} game) =  game
+
+getBoard : {board : Board} -> (g : Game board) -> Board
+getBoard {board} _ = board
+
+state0 : ?state0t
+state0 = startGame
+state0t = proof search
+
+--state0x : ?state0xt
+--state0x = takeBack state0
+--state0xt = proof search
+
+state1 : ?state1t
+state1 = move ne PlayerX state0
+state1t = proof search
