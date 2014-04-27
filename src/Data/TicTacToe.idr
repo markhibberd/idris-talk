@@ -17,7 +17,7 @@ TODO make board effects return "Maybe Board"
 
 --%default total
 
-%logging 1
+%logging 0
 
 data Player = PlayerX | PlayerO
 data Cell = CellX | CellO | b
@@ -281,6 +281,9 @@ gamexx pos player = MoveIt pos player
 isWeiner : { [TICTACTOE (Game board)] } Eff IO Bool
 isWeiner  = pure (isJust (winner (getBoard  !Get)))
 
+
+
+
 --gamex : { [TICTACTOE (Game startBoard), STDIO] ==> {outboard}
 --          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
 gamex : { [TICTACTOE (Game someboard), STDIO] ==> {outboard}
@@ -297,17 +300,29 @@ gamex =  do putStrLn "Current game state ======"
             case pos of
               Nothing => gamex
               Just pp =>
-                do gamexx pp turn
---                                   ww <- isWeiner
---                                   pure (getBoard !Get)) pos
-
-{--
+                gamexx pp turn
+  where
+    handlage : (board: Board) ->
+               { [TICTACTOE (Game board), STDIO] ==> {outboard}
+                 [TICTACTOE (Game outboard), STDIO] } Eff IO Board
+    handlage current =
+      do let updated = getBoard !Get
          case updated == current of
            True => do putStrLn "Can't move there."
                       gamex
            False => case winner updated of
                       Nothing => gamex
-                      Just winsy => do (putStrLn $ "Woot, we have a winner: " ++ winsy)
+                      Just winsy => gamex -- pure updated
+
+--gamex --do --putStrLn ("Woot, we have a winner: " ++ winsy)
+--                                       pure (getBoard !Get)
+
+
+
+--                                   ww <- isWeiner
+--                                   pure (getBoard !Get)) pos
+
+{--
 
 --}
 --
