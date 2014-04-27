@@ -15,8 +15,10 @@ printState board player = do
   putStrLn $ "It is " ++ show player ++ "'s turn."
   putStrLn ""
 
---game : { [TICTACTOE inb, STDIO] ==> {outb} [TICTACTOE outb, STDIO] } Eff IO Board
-game : { [TICTACTOE inb, STDIO] ==> {outb} [TICTACTOE outb, STDIO] } Eff IO Board
+instance Default (TicTacToe InPlay) where
+  default = T start
+
+game : { [TICTACTOE InPlay, STDIO] ==> [TICTACTOE Done, STDIO] } Eff IO ()
 game = do
   let current = !GetBoard
   let player = turn current
@@ -26,7 +28,11 @@ game = do
     Nothing => do putStrLn $ "Sorry " ++ trim input ++ " is not a valid position"
                   pure !game
     Just position =>
-               do putStrLn $ "Trying to play move " ++ trim input
-                  GetBoard
+               do InPlay <- Move position player | Done => putStrLn "Done"
+                  game
 
---                  pure !(Move position player)
+go : { [TICTACTOE InPlay, STDIO] ==> [TICTACTOE Done, STDIO] } Eff IO ()
+go = do
+  game
+  board <- GetBoard
+  putStrLn $ show board

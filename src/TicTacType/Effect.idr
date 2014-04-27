@@ -8,13 +8,13 @@ import TicTacType.Data
 %logging 0
 
 data TicTacToeState =
-  InPlay | Draw | VictoryTo Player
+  InPlay | Done
 
 toState : Board -> TicTacToeState
 toState b =
    case (winner b, complete b) of
-     (Just p, _)  => VictoryTo p
-     (Nothing, True)  => Draw
+     (Just p, _)  => Done
+     (Nothing, True)  => Done
      (Nothing, False) => InPlay
 
 data TicTacToe : TicTacToeState -> Type where
@@ -24,6 +24,8 @@ data TicTacToeRules : Effect where
   Move : (position : Position) -> (player : Player) -> { TicTacToe st  ==> {st'} (TicTacToe st')  } TicTacToeRules TicTacToeState
 
   Get : { g } TicTacToeRules g
+
+  GetBoard : { TicTacToe st } TicTacToeRules Board
 
 TICTACTOE : TicTacToeState -> EFFECT
 TICTACTOE s = MkEff (TicTacToe s) TicTacToeRules
@@ -37,6 +39,8 @@ using (m : Type -> Type)
         Nothing => k (toState . toBoard $ game) (T game)
 
     handle t Get k = k t t
+
+    handle (T game) GetBoard k = k (toBoard game) (T game)
 
 {- An extra data type to represent the result of a move -}
 
