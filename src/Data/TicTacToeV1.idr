@@ -8,7 +8,7 @@ import Effect.Random
 
 TODO make Board a newtype with a decent show
 TODO make a "ValidBoard" proof that can be used to load boards
-TODO network??
+TODO network??p
 TODO ui??
 TODO CellX/CellY -> Occupied
 TODO b -> Empty

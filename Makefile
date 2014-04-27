@@ -3,12 +3,24 @@ MAKEFLAGS = $(MFLAGS)
 SANDBOX = .cabal-sandbox
 IDRIS = ${SANDBOX}/bin/idris
 
-.PHONY: repl
+.PHONY: repl standalone effect play cli
 
 default: repl
 
 repl: ${IDRIS}
 	${IDRIS} -p effects  -i src src/TicTacType/Data.idr
+
+standalone: ${IDRIS}
+	${IDRIS} src/TicTacType/StandAlone.idr
+
+effect: ${IDRIS}
+	${IDRIS} -p effects -i src src/TicTacType/Effect.idr
+
+play: ${IDRIS}
+	${IDRIS} -p effects -i src src/TicTacType/Play.idr
+
+cli: ${IDRIS}
+	${IDRIS} -p effects -i src src/TicTacType/Cli.idr
 
 ${IDRIS}: ${SANDBOX}
 	test -x ${SANDBOX}/bin/alex || cabal install alex

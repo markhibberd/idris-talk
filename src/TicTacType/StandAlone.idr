@@ -1,10 +1,15 @@
 module TicTacType.Data
 
-import TicTacType.Support
-
 %default total
 
 %logging 0
+
+-- TODO get rid of this helper
+
+even :  Nat -> Bool
+even Z = True
+even (S Z) = False
+even (S n) = not (even n)
 
 -- TODO split Board into Board and ValidBoard, or make it abstract?
 
@@ -126,18 +131,6 @@ s = 7
 se : Position
 se = 8
 
-{- Try to parse a position from a string -}
-parse : String -> Maybe Position
-parse "nw" = Just nw
-parse "n"  = Just n
-parse "ne" = Just ne
-parse "e"  = Just e
-parse "c"  = Just c
-parse "w"  = Just w
-parse "sw" = Just sw
-parse "s"  = Just s
-parse "se" = Just se
-parse _    = Nothing
 
 -----------------------------------------------------------------------
 -- THE BOARD
@@ -164,7 +157,7 @@ instance Show Board where
      " " ++ show sw ++ " | " ++ show s  ++ " | " ++ show se ++ "\n"
 
 {- Next, we will define a bunch of useful combinators for working with
-   boards. Conveniently we get to define these at the value level even
+   boards. Conveniently we get to define these at the value level, even
    though we will end up using them on the type level most of the time.  -}
 
 
@@ -276,6 +269,7 @@ board : (vect: Vect 9 Cell) -> {default ItIsJust prf : (IsJust (tryBoard vect))}
 board vect {prf} with (tryBoard vect)
   board vect {prf = ItIsJust} | Just y = y
 
+
 -----------------------------------------------------------------------
 -- THE GAME
 -----------------------------------------------------------------------
@@ -297,7 +291,7 @@ data Game : Board -> Type where
 
 {- Now our "game" library -}
 
--- a more convenient way to directly make moves on games
+-- an alias for validMove which makes it easier to declare moves (go ne)
 move : {board : Board} -> (position : Position) -> (player : Player) -> (game : Game board) ->
      {default ItIsJust prf : (IsJust (tryValidMove position player board))} -> Game (runMove $ validMove position player board {prf})
 move {board} position player game {prf} = move' (validMove position player board {prf}) game
@@ -331,6 +325,11 @@ playerAt {b} p _ = case at p b of
 -- Who won? (if there is final state)
 whoWon : {b : Board} -> Game b -> {default oh prf : so (complete b) } -> Maybe Player
 whoWon {b} _ = winner b
+
+
+-----------------------------------------------------------------------
+-- DEMO
+-----------------------------------------------------------------------
 
 state0 : ?state0t
 state0 = start

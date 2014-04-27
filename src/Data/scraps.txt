@@ -1,0 +1,161 @@
+
+{--
+
+game : { [TICTACTOE b1, SYSTEM, STDIO] ==>
+         [TICTACTOE b2, SYSTEM, STDIO] } Eff IO ()
+game = do putStrLn (show (PrettyBoard (getBoard !Get)))
+          pure ()
+
+--}
+
+instance Default (Game startBoard) where
+  default = startGame
+
+
+game : { [TICTACTOE (Game z)] ==>
+         [TICTACTOE (Game z)] } Eff IO Board
+game =  do gg <- Get
+           pure (getBoard gg)
+
+{--
+gamex : { [TICTACTOE (Game startBoard), STDIO] ==>
+          [TICTACTOE (Game startBoard), STDIO] } Eff IO Board
+gamex =  do gg <- Get
+            let bb = getBoard gg
+            let ss = show (PBoard bb)
+            let x = !(putStrLn ss)
+            pure bb
+--}
+
+
+parse : String -> Maybe Position
+parse "nw" = Just nw
+parse "n"  = Just n
+parse "ne" = Just ne
+parse "e"  = Just e
+parse "c"  = Just c
+parse "w"  = Just w
+parse "sw" = Just sw
+parse "s"  = Just s
+parse "se" = Just se
+parse _    = Nothing
+
+{--
+dostuff : String -> Player -> (b: Board) -> { [STDIO] ==> [STDIO] } Eff IO (Maybe (ValidMove b))
+dostuff input player board =
+  case parse input of
+    Just xx => do putStrLn "Nice move!"
+                  pure $ validMoveX xx player board
+    Nothing => do putStrLn $ "Not a valid move " ++ trim input
+                  pure Nothing
+-}
+
+
+dostuff : String -> { [STDIO] ==> [STDIO] } Eff IO (Maybe Position)
+dostuff input =
+  case parse input of
+    Just xx => do putStrLn "Nice move!"
+                  pure . Just $ xx
+    Nothing => do putStrLn $ "Not a valid move " ++ trim input
+                  pure Nothing
+
+
+gamexx : Position -> Player -> { [TICTACTOE (Game board)] ==> {outboard}
+          [TICTACTOE (Game outboard)] } Eff IO Board
+gamexx pos player = MoveIt pos player
+
+isWeiner : { [TICTACTOE (Game board)] } Eff IO Bool
+isWeiner  = pure (isJust (winner (getBoard  !Get)))
+
+
+--gamex : { [TICTACTOE (Game startBoard), STDIO] ==> {outboard}
+--          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
+gamex : { [TICTACTOE (Game someboard), STDIO] ==> {outboard}
+          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
+gamex =  do putStrLn "Current game state ======"
+            let current = getBoard !Get
+            let pretty = show (PBoard current)
+            let turn = next current
+            putStrLn pretty
+            putStrLn $ "\n Make a move " ++ show turn
+
+            input <- getStr
+            pos <- dostuff (trim input)
+            case pos of
+              Nothing => gamex
+              Just pp =>
+                gamexx pp turn
+{--
+  where
+    handlage : (board: Board) ->
+               { [TICTACTOE (Game board), STDIO] ==> {outboard}
+                 [TICTACTOE (Game outboard), STDIO] } Eff IO Board
+    handlage current =
+      do let updated = getBoard !Get
+         case updated == current of
+           True => do putStrLn "Can't move there."
+                      gamex
+           False => pure (getBoard !Get) --case winner updated of
+--                      Nothing => gamex
+--                      Just winsy => gamex -- pure updated
+
+--}
+
+--gamex --do --putStrLn ("Woot, we have a winner: " ++ winsy)
+--                                       pure (getBoard !Get)
+
+
+
+--                                   ww <- isWeiner
+--                                   pure (getBoard !Get)) pos
+
+{--
+
+--}
+--
+
+
+
+
+
+{--         dostuff
+            case parse (trim input) of
+              Just pos => do putStrLn "Nice move!"
+                             --let nu = !(MoveIt pos turn) in
+                             pure ()
+              Nothing => do putStrLn $ "Not a valid move: " ++ trim input
+--                            gamex
+                            pure ()
+--}
+--            pure ()
+
+--g0;amex : { [TICTACTOE b1, STDIO] ==>
+--         [TICTACTOE b1, STDIO] } Eff IO ()
+--gamex =
+--  do putStrLn (show (PrettyBoard !Get))
+--     Get
+
+
+
+
+go : IO ()
+go = putStrLn "xoxoxox"
+
+
+
+{--
+data Expr = Val Integer
+  | Var String
+  | Add Expr Expr
+  | Random Integer
+
+
+eval : Expr -> { [EXCEPTION String, RND, STATE Env] } Eff m Integer
+eval (Random upper) = do val <- rndInt 0 upper
+                         putStrLn (show val)
+                         return val
+--}
+
+--}
+
+--}
