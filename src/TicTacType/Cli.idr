@@ -6,6 +6,10 @@ import Effect.System
 import TicTacType.Data
 import TicTacType.Effect
 
+%default total
+
+%logging 0
+
 printState : Board -> Player ->  { [STDIO] } Eff IO ()
 printState board player = do
   putStrLn "Current game state ======"

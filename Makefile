@@ -3,8 +3,9 @@ MAKEFLAGS = $(MFLAGS)
 SANDBOX = .cabal-sandbox
 IDRIS = ${SANDBOX}/bin/idris
 IDRIS_NETWORK = ${SANDBOX}/share/x86_64-osx-ghc-7.6.1/idris-0.9.12/network
+DIST = dist
 
-.PHONY: repl standalone effect play cli net
+.PHONY: repl standalone effect play cli net serve
 
 default: repl
 
@@ -26,6 +27,12 @@ cli: ${IDRIS}
 net: ${IDRIS} ${IDRIS_NETWORK}
 	${IDRIS} -p effects -p network  -i src src/TicTacType/Network.idr
 
+dist/serve: ${IDRIS} ${IDRIS_NETWORK} ${DIST}
+	${IDRIS} -p effects -p network  -i src -o dist/serve src/serve.idr
+
+serve: dist/serve
+	dist/serve
+
 network/network.ipkg:
 	git submodule init
 	git submodule update
@@ -39,3 +46,6 @@ ${IDRIS}: ${SANDBOX}
 
 ${SANDBOX}:
 	cabal sandbox init
+
+${DIST}:
+	mkdir -p $@
