@@ -4,7 +4,20 @@ import Effect.StdIO
 import Effect.System
 import Effect.Random
 
+{-
+
+TODO make Board a newtype with a decent show
+TODO make a "ValidBoard" proof that can be used to load boards
+TODO network??
+TODO ui??
+TODO CellX/CellY -> Occupied
+TODO b -> Empty
+TODO make board effects return "Maybe Board"
+-}
+
 --%default total
+
+%logging 1
 
 data Player = PlayerX | PlayerO
 data Cell = CellX | CellO | b
@@ -14,6 +27,9 @@ instance Show Cell where
   show CellO = "o"
   show b     = "_"
 
+instance Show Player where
+  show PlayerX = "x"
+  show PlayerO = "o"
 
 Pos : Type
 Pos = Fin 9
@@ -33,6 +49,7 @@ instance Show PrettyBoard where
      " " ++ show w  ++ " | " ++ show c  ++ " | " ++ show e  ++ "\n" ++
      "-----------\n" ++
      " " ++ show sw ++ " | " ++ show s  ++ " | " ++ show se ++ "\n"
+
 
 
 toCell : Player -> Cell
@@ -113,7 +130,7 @@ even (S Z) = False
 even (S n) = not (even n)
 
 occupied : Board -> Nat
-occupied = sum . map countOf
+occupied board = sum . map countOf $ board
 
 next : Board -> Player
 next board =
@@ -208,6 +225,7 @@ game = do putStrLn (show (PrettyBoard (getBoard !Get)))
 instance Default (Game startBoard) where
   default = startGame
 
+
 game : { [TICTACTOE (Game z)] ==>
          [TICTACTOE (Game z)] } Eff IO Board
 game =  do gg <- Get
@@ -224,25 +242,97 @@ gamex =  do gg <- Get
 --}
 
 
-gamex : { [TICTACTOE (Game startBoard), STDIO] ==>
-          [TICTACTOE (Game startBoard), STDIO] } Eff IO Board
+parse : String -> Maybe Pos
+parse "nw" = Just nw
+parse "n"  = Just n
+parse "ne" = Just ne
+parse "e"  = Just e
+parse "c"  = Just c
+parse "w"  = Just w
+parse "sw" = Just sw
+parse "s"  = Just s
+parse "se" = Just se
+parse _    = Nothing
+
+{--
+dostuff : String -> Player -> (b: Board) -> { [STDIO] ==> [STDIO] } Eff IO (Maybe (ValidMove b))
+dostuff input player board =
+  case parse input of
+    Just xx => do putStrLn "Nice move!"
+                  pure $ validMoveX xx player board
+    Nothing => do putStrLn $ "Not a valid move " ++ trim input
+                  pure Nothing
+-}
+
+
+dostuff : String -> { [STDIO] ==> [STDIO] } Eff IO (Maybe Pos)
+dostuff input =
+  case parse input of
+    Just xx => do putStrLn "Nice move!"
+                  pure . Just $ xx
+    Nothing => do putStrLn $ "Not a valid move " ++ trim input
+                  pure Nothing
+
+
+gamexx : Pos -> Player -> { [TICTACTOE (Game board)] ==> {outboard}
+          [TICTACTOE (Game outboard)] } Eff IO Board
+gamexx pos player = MoveIt pos player
+
+isWeiner : { [TICTACTOE (Game board)] } Eff IO Bool
+isWeiner  = pure (isJust (winner (getBoard  !Get)))
+
+--gamex : { [TICTACTOE (Game startBoard), STDIO] ==> {outboard}
+--          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
+gamex : { [TICTACTOE (Game someboard), STDIO] ==> {outboard}
+          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
 gamex =  do putStrLn "Current game state ======"
             let current = getBoard !Get
---            let pretty = show (PBoard current)
-            putStrLn "zz" -- pretty
-            putStrLn "\n Make a move: "
---            input <- getStr
---            let attempt = trim input
---            case attempt of
---              "ne" => putStrLn "ne"
---              otherwise => putStrLn "invalid"
-            pure current
+            let pretty = show (PBoard current)
+            let turn = next current
+            putStrLn pretty
+            putStrLn $ "\n Make a move " ++ show turn
 
---gamex : { [TICTACTOE b1, STDIO] ==>
+            input <- getStr
+            pos <- dostuff (trim input)
+            case pos of
+              Nothing => gamex
+              Just pp =>
+                do gamexx pp turn
+--                                   ww <- isWeiner
+--                                   pure (getBoard !Get)) pos
+
+{--
+         case updated == current of
+           True => do putStrLn "Can't move there."
+                      gamex
+           False => case winner updated of
+                      Nothing => gamex
+                      Just winsy => do (putStrLn $ "Woot, we have a winner: " ++ winsy)
+
+--}
+--
+
+
+
+
+
+{--         dostuff
+            case parse (trim input) of
+              Just pos => do putStrLn "Nice move!"
+                             --let nu = !(MoveIt pos turn) in
+                             pure ()
+              Nothing => do putStrLn $ "Not a valid move: " ++ trim input
+--                            gamex
+                            pure ()
+--}
+--            pure ()
+
+--g0;amex : { [TICTACTOE b1, STDIO] ==>
 --         [TICTACTOE b1, STDIO] } Eff IO ()
 --gamex =
 --  do putStrLn (show (PrettyBoard !Get))
 --     Get
+
 
 
 
