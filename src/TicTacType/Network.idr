@@ -18,6 +18,7 @@ receive' : { [STDIO, STATE Nat, TCPSERVERCLIENT ClientConnected] ==>
              [STDIO, STATE Nat, TCPSERVERCLIENT ()] } Eff IO ()
 receive' = do
   -- Receive
+  putStrLn "Waiting...."
   current <- get
   OperationSuccess (str, len) <- tcpRecv 1024
     | RecoverableError _ => receive'
@@ -32,6 +33,7 @@ receive' = do
                            tcpFinalise
     | ConnectionClosed => return ()
   put (S current)
+  putStrLn $ "You have received " ++ show !get ++ " messages"
   receive'
 
 receive : ClientProgram ()
@@ -80,4 +82,4 @@ setupServer port do_fork = do
 
 
 go : IO ()
-go = run (setupServer 1234 False)
+go = run (setupServer 1235 False)

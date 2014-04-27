@@ -27,7 +27,8 @@ cli: ${IDRIS}
 net: ${IDRIS} ${IDRIS_NETWORK}
 	${IDRIS} -p effects -p network  -i src src/TicTacType/Network.idr
 
-dist/serve: ${IDRIS} ${IDRIS_NETWORK} ${DIST}
+dist/serve: ${IDRIS} ${IDRIS_NETWORK} ${DIST} src/serve.idr src/TicTacType/Network.idr
+	rm dist/serve
 	${IDRIS} -p effects -p network  -i src -o dist/serve src/serve.idr
 
 serve: dist/serve
