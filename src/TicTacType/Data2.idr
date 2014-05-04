@@ -148,7 +148,23 @@ parse _    = Nothing
    with limited effect on the rest of the program (excepting the algorithm
    that determines a win). -}
 
-data Board = B (Vect 9 Cell)
+valid' : Vect 9 Cell -> Bool
+valid' board =
+  let xs = sum . map xToInt  $ board in
+  let ys = sum . map oToInt  $ board in
+  xs == ys || xs == (S ys) where
+
+  xToInt Unoccupied = 0
+  xToInt (Occupied X) = 1
+  xToInt (Occupied O) = 0
+
+  oToInt Unoccupied = 0
+  oToInt (Occupied X) = 0
+  oToInt (Occupied O) = 1
+
+
+data Board : Type where
+  B : (b : Vect 9 Cell) -> {default oh prf : so (valid' b) } -> Board
 
 instance Eq Board where
   (B a) == (B b) = a == b
@@ -195,17 +211,7 @@ winner (B [nw, n,  ne,
 -- Is this a valid board?
 isValidBoard : Board -> Bool
 isValidBoard board =
-  let xs = sum . map xToInt . toVect $ board in
-  let ys = sum . map oToInt . toVect $ board in
-  xs == ys || xs == (S ys) where
-
-  xToInt Unoccupied = 0
-  xToInt (Occupied X) = 1
-  xToInt (Occupied O) = 0
-
-  oToInt Unoccupied = 0
-  oToInt (Occupied X) = 0
-  oToInt (Occupied O) = 1
+  valid' . toVect $ board
 
 -- How many positions are occupied ?
 occupied : Board -> Nat
@@ -243,14 +249,14 @@ isValidMove position player board =
    board, so we can use it later on. This is more useful than the Bool above. -}
 
 data ValidMove : Board -> Type where
-  IsValidMove : Position -> Player -> (b : Board) -> ValidMove b
+  IsValidMove : Position -> Player -> (b : Board) -> (bb : Board) -> ValidMove b
 
 {- To construct these, we first build a function that "might" produce a ValidMove
    depending on the constraints of `isValidMove`. -}
 
 tryValidMove : Position -> Player -> (b : Board) -> Maybe (ValidMove b)
 tryValidMove position player board =
-  toMaybe (isValidMove position player board) (IsValidMove position player board)
+  toMaybe (isValidMove position player board) (IsValidMove position player board bboard)
 
 {- But the great thing about all these types, is that we can directly construct a
    valid move if we can prove it. -}
@@ -268,14 +274,14 @@ runMove (IsValidMove position player (B board)) =
 
 
 {- Now a similar treatment to create a safe board constructor. -}
-
+{--
 tryBoard : Vect 9 Cell -> Maybe Board
 tryBoard vect = let b = B vect in toMaybe (isValidBoard b) b
 
 board : (vect: Vect 9 Cell) -> {default ItIsJust prf : (IsJust (tryBoard vect))} -> Board
 board vect {prf} with (tryBoard vect)
   board vect {prf = ItIsJust} | Just y = y
-
+--}
 -----------------------------------------------------------------------
 -- THE GAME
 -----------------------------------------------------------------------

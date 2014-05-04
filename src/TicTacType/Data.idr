@@ -256,7 +256,7 @@ tryValidMove position player board =
    valid move if we can prove it. -}
 
 validMove : (position : Position) -> (player : Player) -> (board : Board) ->
-            {default ItIsJust prf : (IsJust (tryValidMove position player board))} -> ValidMove board
+            {default ItIsJust prf : IsJust (tryValidMove position player board)} -> ValidMove board
 validMove position player board {prf} with (tryValidMove position player board)
   validMove position player board {prf = ItIsJust} | Just y = y
 
@@ -295,6 +295,7 @@ data Game : Board -> Type where
   -- make a (guaranteed to be valid) move on the current game
   move' : {b : Board} -> (m : ValidMove b) -> Game b -> Game (runMove m)
 
+
 {- Now our "game" library -}
 
 -- a more convenient way to directly make moves on games
@@ -332,14 +333,25 @@ playerAt {b} p _ = case at p b of
 whoWon : {b : Board} -> Game b -> {default oh prf : so (complete b) } -> Maybe Player
 whoWon {b} _ = winner b
 
-state0 : ?state0t
-state0 = start
-state0t = proof search
 
---state0x : ?state0xt
---state0x = takeBack state0
---state0xt = proof search
+-- a type level game
 
-state1 : ?state1t
-state1 = move ne X state0
-state1t = proof search
+game0 : ?t1
+game0 = start
+t1 = proof search
+
+--game0x : ?t2
+--game0x = takeBack game0
+--t3 = proof search
+
+game1 : ?t3
+game1 = move ne X game0
+t3 = proof search
+
+--game1x : ?t4
+--game1x = move ne O game1
+--t4 = proof search
+
+game2 : ?t5
+game2 = move sw O game1
+t5 = proof search

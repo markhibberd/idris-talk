@@ -5,12 +5,15 @@ IDRIS = ${SANDBOX}/bin/idris
 IDRIS_NETWORK = ${SANDBOX}/share/x86_64-osx-ghc-7.6.1/idris-0.9.12/network
 DIST = dist
 
-.PHONY: repl standalone effect play cli net serve
+.PHONY: repl standalone effect play cli net serve expr
 
 default: repl
 
 repl: ${IDRIS}
 	${IDRIS} -p effects  -i src src/TicTacType/Data.idr
+
+expr: ${IDRIS}
+	${IDRIS} -p effects  -i src src/TicTacType/Data2.idr
 
 standalone: ${IDRIS}
 	${IDRIS} src/TicTacType/StandAlone.idr
