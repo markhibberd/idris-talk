@@ -1,25 +1,12 @@
-module Data.TicTacToe
+module TicTacType.Data
 
-import Data.Support
-
-import Effect.StdIO
-import Effect.System
-import Effect.Random
-
-{-
-
-TODO make Board a newtype with a decent show
-TODO make a "ValidBoard" proof that can be used to load boards
-TODO network??
-TODO ui??
-TODO CellX/CellY -> Occupied
-TODO b -> Empty
-TODO make board effects return "Maybe Board"
--}
+import TicTacType.Support
 
 %default total
 
 %logging 0
+
+-- TODO split Board into Board and ValidBoard, or make it abstract?
 
 -----------------------------------------------------------------------
 -- TIC TAC TYPE
@@ -139,6 +126,18 @@ s = 7
 se : Position
 se = 8
 
+{- Try to parse a position from a string -}
+parse : String -> Maybe Position
+parse "nw" = Just nw
+parse "n"  = Just n
+parse "ne" = Just ne
+parse "e"  = Just e
+parse "c"  = Just c
+parse "w"  = Just w
+parse "sw" = Just sw
+parse "s"  = Just s
+parse "se" = Just se
+parse _    = Nothing
 
 -----------------------------------------------------------------------
 -- THE BOARD
@@ -149,7 +148,6 @@ se = 8
    with limited effect on the rest of the program (excepting the algorithm
    that determines a win). -}
 
-abstract
 data Board = B (Vect 9 Cell)
 
 instance Eq Board where
@@ -166,10 +164,11 @@ instance Show Board where
      " " ++ show sw ++ " | " ++ show s  ++ " | " ++ show se ++ "\n"
 
 {- Next, we will define a bunch of useful combinators for working with
-   boards. Conveniently we get to define these at the value level, even
+   boards. Conveniently we get to define these at the value level even
    though we will end up using them on the type level most of the time.  -}
 
--- Convert a board back to it's vectorized form
+
+-- Convert a board back to its vectorized form
 toVect : Board -> Vect 9 Cell
 toVect (B v) = v
 
@@ -216,6 +215,10 @@ occupied board =
   toInt Unoccupied = 0
   toInt (Occupied _) = 1
 
+-- What is at the specified position ?
+at : Position -> Board -> Cell
+at position (B vect) = index position vect
+
 -- Who's turn is it?
 turn : Board -> Player
 turn board =
@@ -223,31 +226,36 @@ turn board =
 
 -- Is this position free?
 free : Position -> Board -> Bool
-free position (B board) =
-  index position board == Unoccupied
+free position board =
+  at position board == Unoccupied
+
+-- Is this game complete?
+complete : Board -> Bool
+complete board =
+  isJust (winner board) || occupied board == (length . toVect $ board)
 
 -- Is this a valid move for the current board?
 isValidMove : Position -> Player -> Board -> Bool
 isValidMove position player board =
-  free position board && isJust (winner board) && turn board == player
+  free position board && (not . isJust) (winner board) && turn board == player
 
 {- We want a data structure to carry the proof that a move is valid for a given
    board, so we can use it later on. This is more useful than the Bool above. -}
 
 data ValidMove : Board -> Type where
-  IsValidMove : Position -> Player -> (board: Board) -> ValidMove board
+  IsValidMove : Position -> Player -> (b : Board) -> ValidMove b
 
 {- To construct these, we first build a function that "might" produce a ValidMove
    depending on the constraints of `isValidMove`. -}
 
-tryValidMove : Position -> Player -> (board: Board) -> Maybe (ValidMove board)
+tryValidMove : Position -> Player -> (b : Board) -> Maybe (ValidMove b)
 tryValidMove position player board =
   toMaybe (isValidMove position player board) (IsValidMove position player board)
 
 {- But the great thing about all these types, is that we can directly construct a
    valid move if we can prove it. -}
 
-validMove : (position: Position) -> (player: Player) -> (board: Board) ->
+validMove : (position : Position) -> (player : Player) -> (board : Board) ->
             {default ItIsJust prf : (IsJust (tryValidMove position player board))} -> ValidMove board
 validMove position player board {prf} with (tryValidMove position player board)
   validMove position player board {prf = ItIsJust} | Just y = y
@@ -268,7 +276,6 @@ board : (vect: Vect 9 Cell) -> {default ItIsJust prf : (IsJust (tryBoard vect))}
 board vect {prf} with (tryBoard vect)
   board vect {prf = ItIsJust} | Just y = y
 
-
 -----------------------------------------------------------------------
 -- THE GAME
 -----------------------------------------------------------------------
@@ -283,44 +290,50 @@ data Game : Board -> Type where
   start : Game empty
 
   -- start from some arbitrary starting point
-  load : (b: Board) -> Game b
+  load : (b : Board) -> Game b
 
   -- make a (guaranteed to be valid) move on the current game
-  move : {b: Board} -> (m: ValidMove b) -> Game b -> Game (runMove m)
+  move' : {b : Board} -> (m : ValidMove b) -> Game b -> Game (runMove m)
 
+{- Now our "game" library -}
 
+-- a more convenient way to directly make moves on games
+move : {board : Board} -> (position : Position) -> (player : Player) -> (game : Game board) ->
+     {default ItIsJust prf : (IsJust (tryValidMove position player board))} -> Game (runMove $ validMove position player board {prf})
+move {board} position player game {prf} = move' (validMove position player board {prf}) game
 
-{--
+-- A data type to hold a proof that we have a previous game state available
+data Prev : Game b -> Type where
+  HasPrev : {bb : Board} -> {m : ValidMove bb} -> {g : Game bb} ->  Prev (move' m g)
 
-data Game : Board -> Type where
-  startGame : Game startBoard
-  -- FIX consider adding "load game or similar" that would let me demo the search tactics etc...
-  move : {board: Board} -> (validMove: ValidMove board) -> Game board -> Game (doMove validMove)
+-- Give me the board for the current game state.
+toBoard : {b : Board} -> Game b -> Board
+toBoard {b} _ = b
 
+-- Has the game started?
+hasStarted : {b : Board} -> Game b -> Bool
+hasStarted {b} _ = occupied b > 0
 
-mv : {board: Board} -> (pos: Position) -> (player: Player) -> (Game board) -> {default ItIsJust prf : (IsJust (validMoveX pos player board))} -> ValidMove board
-mv {board} pos player game {prf} with (validMoveX pos player board)
-  mv {board} pos player game {prf = ItIsJust} | Just y = y
+-- What was the previous board? (only if you have a proof that there is a previous board)
+previousBoard : (gg : Game b) -> {default HasPrev prf : (Prev gg)} -> Board
+previousBoard (move' {b} m g) {prf = HasPrev} = b
 
-started : Board -> Bool
-started board =
-  (sum . map countOf $ board) > 0
+-- Take back the last move? (only if you have a proof that there is a previous board)
+takeBack : (gg : Game b) -> {default HasPrev prf : (Prev gg)} -> Game (previousBoard gg {prf})
+takeBack (move' {b} m g) {prf = HasPrev} = g
 
-{--
-prevBoard : {board : Board} -> (g : Game board) -> {default oh ok : so (started board)} -> Board
-prevBoard startGame = startBoard
-prevBoard (move pos val {board} game) = board
+-- Who if any holds the specified position?
+playerAt : {b: Board} -> Position -> Game b -> Maybe Player
+playerAt {b} p _ = case at p b of
+  Occupied player => Just player
+  Unoccupied => Nothing
 
-takeBack : {board : Board} -> (g : Game board) -> {default oh ok : so (started board)} -> Game (prevBoard g {ok})
-takeBack startGame = startGame
-takeBack (move pos val {board} game) =  game
---}
-
-getBoard : {board : Board} -> (g : Game board) -> Board
-getBoard {board} _ = board
+-- Who won? (if there is final state)
+whoWon : {b : Board} -> Game b -> {default oh prf : so (complete b) } -> Maybe Player
+whoWon {b} _ = winner b
 
 state0 : ?state0t
-state0 = startGame
+state0 = start
 state0t = proof search
 
 --state0x : ?state0xt
@@ -328,189 +341,5 @@ state0t = proof search
 --state0xt = proof search
 
 state1 : ?state1t
-state1 = move (mv ne X state0) state0
+state1 = move ne X state0
 state1t = proof search
-
-AMove : Type
-AMove = (Position, Player)
-
-data TicTacToeRules : Effect where
-
-  MoveIt : (pos : Position) -> (player : Player) ->  { (Game board)  ==> {boardx} (Game boardx) } TicTacToeRules Board
-
-  Get : { g ==> g } TicTacToeRules g
-
-{--
-
-TICTACTOE : Type -> EFFECT
-TICTACTOE g = MkEff g TicTacToeRules
-
-using (m : Type -> Type)
-  instance Handler TicTacToeRules m where
-    handle game (MoveIt pos player) k =
-        case validMoveX pos player (getBoard game) of
-          Just myMove => k (doMove myMove) (move myMove game)
-          Nothing => k (getBoard game) game
-
-    handle st Get k = k st st
-
-{--
-
-game : { [TICTACTOE b1, SYSTEM, STDIO] ==>
-         [TICTACTOE b2, SYSTEM, STDIO] } Eff IO ()
-game = do putStrLn (show (PrettyBoard (getBoard !Get)))
-          pure ()
-
---}
-
-instance Default (Game startBoard) where
-  default = startGame
-
-
-game : { [TICTACTOE (Game z)] ==>
-         [TICTACTOE (Game z)] } Eff IO Board
-game =  do gg <- Get
-           pure (getBoard gg)
-
-{--
-gamex : { [TICTACTOE (Game startBoard), STDIO] ==>
-          [TICTACTOE (Game startBoard), STDIO] } Eff IO Board
-gamex =  do gg <- Get
-            let bb = getBoard gg
-            let ss = show (PBoard bb)
-            let x = !(putStrLn ss)
-            pure bb
---}
-
-
-parse : String -> Maybe Position
-parse "nw" = Just nw
-parse "n"  = Just n
-parse "ne" = Just ne
-parse "e"  = Just e
-parse "c"  = Just c
-parse "w"  = Just w
-parse "sw" = Just sw
-parse "s"  = Just s
-parse "se" = Just se
-parse _    = Nothing
-
-{--
-dostuff : String -> Player -> (b: Board) -> { [STDIO] ==> [STDIO] } Eff IO (Maybe (ValidMove b))
-dostuff input player board =
-  case parse input of
-    Just xx => do putStrLn "Nice move!"
-                  pure $ validMoveX xx player board
-    Nothing => do putStrLn $ "Not a valid move " ++ trim input
-                  pure Nothing
--}
-
-
-dostuff : String -> { [STDIO] ==> [STDIO] } Eff IO (Maybe Position)
-dostuff input =
-  case parse input of
-    Just xx => do putStrLn "Nice move!"
-                  pure . Just $ xx
-    Nothing => do putStrLn $ "Not a valid move " ++ trim input
-                  pure Nothing
-
-
-gamexx : Position -> Player -> { [TICTACTOE (Game board)] ==> {outboard}
-          [TICTACTOE (Game outboard)] } Eff IO Board
-gamexx pos player = MoveIt pos player
-
-isWeiner : { [TICTACTOE (Game board)] } Eff IO Bool
-isWeiner  = pure (isJust (winner (getBoard  !Get)))
-
-
---gamex : { [TICTACTOE (Game startBoard), STDIO] ==> {outboard}
---          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
-gamex : { [TICTACTOE (Game someboard), STDIO] ==> {outboard}
-          [TICTACTOE (Game outboard), STDIO] } Eff IO Board
-gamex =  do putStrLn "Current game state ======"
-            let current = getBoard !Get
-            let pretty = show (PBoard current)
-            let turn = next current
-            putStrLn pretty
-            putStrLn $ "\n Make a move " ++ show turn
-
-            input <- getStr
-            pos <- dostuff (trim input)
-            case pos of
-              Nothing => gamex
-              Just pp =>
-                gamexx pp turn
-{--
-  where
-    handlage : (board: Board) ->
-               { [TICTACTOE (Game board), STDIO] ==> {outboard}
-                 [TICTACTOE (Game outboard), STDIO] } Eff IO Board
-    handlage current =
-      do let updated = getBoard !Get
-         case updated == current of
-           True => do putStrLn "Can't move there."
-                      gamex
-           False => pure (getBoard !Get) --case winner updated of
---                      Nothing => gamex
---                      Just winsy => gamex -- pure updated
-
---}
-
---gamex --do --putStrLn ("Woot, we have a winner: " ++ winsy)
---                                       pure (getBoard !Get)
-
-
-
---                                   ww <- isWeiner
---                                   pure (getBoard !Get)) pos
-
-{--
-
---}
---
-
-
-
-
-
-{--         dostuff
-            case parse (trim input) of
-              Just pos => do putStrLn "Nice move!"
-                             --let nu = !(MoveIt pos turn) in
-                             pure ()
-              Nothing => do putStrLn $ "Not a valid move: " ++ trim input
---                            gamex
-                            pure ()
---}
---            pure ()
-
---g0;amex : { [TICTACTOE b1, STDIO] ==>
---         [TICTACTOE b1, STDIO] } Eff IO ()
---gamex =
---  do putStrLn (show (PrettyBoard !Get))
---     Get
-
-
-
-
-go : IO ()
-go = putStrLn "xoxoxox"
-
-
-
-{--
-data Expr = Val Integer
-  | Var String
-  | Add Expr Expr
-  | Random Integer
-
-
-eval : Expr -> { [EXCEPTION String, RND, STATE Env] } Eff m Integer
-eval (Random upper) = do val <- rndInt 0 upper
-                         putStrLn (show val)
-                         return val
---}
-
---}
-
---}

@@ -7,15 +7,43 @@ import Effect.State
 import IdrisNet.Socket
 import IdrisNet.TCP.TCPServer
 
---import TicTacType.Data
---import TicTacType.Effect
-
---%default total
+import TicTacType.Data
+import TicTacType.Effect
 
 %logging 0
 
-receive' : { [STDIO, STATE Nat, TCPSERVERCLIENT ClientConnected] ==>
-             [STDIO, STATE Nat, TCPSERVERCLIENT ()] } Eff IO ()
+
+data CurrentGame : Type where
+  Current : (TicTacToe state) -> CurrentGame
+
+instance Default CurrentGame where
+  default = Current . T $ start
+
+instance Show CurrentGame where
+  show (Current (T g)) = show . toBoard $ g
+
+data Command =
+    ShowGame
+  | HelpGame
+  | MoveGame TicTacType.Data.Position
+
+total
+parseCommand : String -> Maybe Command
+parseCommand s = case unpack s of
+  's' :: 'h' :: 'o' :: 'w' :: Nil => Just ShowGame
+  'h' :: 'e' :: 'l' :: 'p' :: Nil => Just HelpGame
+  'm' :: 'o' :: 'v' :: 'e' :: ' ' :: position => map MoveGame (parse $ pack position)
+  _ => Nothing
+
+handleCommand : CurrentGame -> String -> String
+handleCommand current s = case parseCommand s of
+  Nothing => "Not a valid command: " ++ s
+  Just ShowGame => show current
+  Just HelpGame => "something helpful"
+  Just (MoveGame p) => "some move: "
+
+receive' : { [STDIO, STATE CurrentGame, TCPSERVERCLIENT ClientConnected] ==> {n}
+             [STDIO, STATE CurrentGame, TCPSERVERCLIENT ()] } Eff IO ()
 receive' = do
   -- Receive
   putStrLn "Waiting...."
@@ -25,19 +53,19 @@ receive' = do
     | FatalError err => do putStr ("Error receiving: " ++ (show err))
                            tcpFinalise
     | ConnectionClosed => return ()
-  -- Echo
-  OperationSuccess _ <- tcpSend str
+  OperationSuccess _ <- tcpSend (handleCommand current (trim str))
     | RecoverableError err => do putStr ("Error sending: " ++ (show err))
                                  tcpClose
     | FatalError err => do putStr ("Error sending: " ++ (show err))
                            tcpFinalise
     | ConnectionClosed => return ()
-  put (S current)
-  putStrLn $ "You have received " ++ show !get ++ " messages"
+  put current
+  let c = !get
+  putStrLn $ "You have received " ++ show c ++ " messages"
   receive'
 
 receive : ClientProgram ()
-receive = new (new receive')
+receive = new . new $ receive'
 
 forkServerLoop : { [TCPSERVER (ServerListening), STDIO] ==>
                [TCPSERVER (), STDIO] } Eff IO ()
@@ -81,5 +109,6 @@ setupServer port do_fork = do
   if do_fork then forkServerLoop else serverLoop
 
 
+partial
 go : IO ()
-go = run (setupServer 1235 False)
+go = run (setupServer 1236 True)
