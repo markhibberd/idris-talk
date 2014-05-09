@@ -355,3 +355,7 @@ t3 = proof search
 game2 : ?t5
 game2 = move sw O game1
 t5 = proof search
+
+--gamex : ?tx
+--gamex = move nw X $ move c O $ move n X $ move sw O $ move ne X $ game0
+--tx = proof search

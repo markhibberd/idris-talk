@@ -10,6 +10,7 @@ import TicTacType.Effect
 
 %logging 0
 
+partial
 printState : Board -> Player ->  { [STDIO] } Eff IO ()
 printState board player = do
   putStrLn "Current game state ======"
@@ -22,6 +23,7 @@ printState board player = do
 instance Default (TicTacToe InPlay) where
   default = T start
 
+partial
 game : { [TICTACTOE InPlay, STDIO] ==> [TICTACTOE Done, STDIO] } Eff IO ()
 game = do
   let current = !GetBoard
@@ -35,8 +37,16 @@ game = do
                do InPlay <- Move position player | Done => putStrLn "Done"
                   game
 
+partial
 go : { [TICTACTOE InPlay, STDIO] ==> [TICTACTOE Done, STDIO] } Eff IO ()
 go = do
   game
   board <- GetBoard
   putStrLn $ show board
+  case winner board of
+    Nothing => putStrLn "It was a draw!"
+    Just p => putStrLn $ "Player '" ++ show p ++ "' won"
+
+partial
+main : IO ()
+main = run go

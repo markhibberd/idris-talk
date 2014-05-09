@@ -12,9 +12,19 @@ import TicTacType.Effect
 
 %logging 0
 
-
 data CurrentGame : Type where
   Current : (TicTacToe state) -> CurrentGame
+
+game : CurrentGame -> (x ** Game x)
+game (Current (T z)) =
+  (toBoard z ** z)
+
+--toBoard' : CurrentGame -> (x ** Board)
+--toBoard' c =
+--  case game c of
+--    (x ** g) => (x ** toBoard g)
+--  case x of
+--    T game => toBoard game
 
 instance Default CurrentGame where
   default = Current . T $ start
@@ -25,23 +35,54 @@ instance Show CurrentGame where
 data Command =
     ShowGame
   | HelpGame
-  | MoveGame TicTacType.Data.Position
+  | MoveGame Player TicTacType.Data.Position
 
 total
 parseCommand : String -> Maybe Command
 parseCommand s = case unpack s of
   's' :: 'h' :: 'o' :: 'w' :: Nil => Just ShowGame
   'h' :: 'e' :: 'l' :: 'p' :: Nil => Just HelpGame
-  'm' :: 'o' :: 'v' :: 'e' :: ' ' :: position => map MoveGame (parse $ pack position)
+  'm' :: 'o' :: 'v' :: 'e' :: ' ' :: 'x' :: ' ' :: position =>
+    map (MoveGame X) (parse $ pack position)
+  'm' :: 'o' :: 'v' :: 'e' :: ' ' :: 'o' :: ' ' :: position =>
+    map (MoveGame O) (parse $ pack position)
   _ => Nothing
 
-handleCommand : CurrentGame -> String -> String
-handleCommand current s = case parseCommand s of
-  Nothing => "Not a valid command: " ++ s
-  Just ShowGame => show current
-  Just HelpGame => "something helpful"
-  Just (MoveGame p) => "some move: "
 
+handleCommand : String -> { [STATE CurrentGame] } Eff IO String
+handleCommand s = --do
+--  let current = !get
+  case parseCommand s of
+    Nothing =>
+      pure $ "Not a valid command: " ++ s ++  "\n"
+    Just ShowGame =>
+      pure $ show !get
+    Just HelpGame =>
+      pure "Commands: show | help | move {player} {position}\n"
+    Just (MoveGame player pos) => do
+      let current = !get
+      let (b ** g) = game current
+      case tryValidMove pos player b of
+        Just validmove => do
+          let updated = move' validmove g
+          let _ = !(put (Current . T $ updated))
+          pure $ "Great Move: \n" ++ show !get ++ "\n"
+        Nothing =>
+          pure "Invalid move.\n"
+
+
+
+{--
+
+  putStrLn $ "Processing: " ++ s
+  let r = (case pparseCommand s of
+             Nothing => "Not a valid command: "
+             Just ShowGame => show current
+             Just HelpGame => "something helpful"
+             Just (MoveGame p) => "some move: ")
+  putStrLn r
+  pure r
+--}
 receive' : { [STDIO, STATE CurrentGame, TCPSERVERCLIENT ClientConnected] ==> {n}
              [STDIO, STATE CurrentGame, TCPSERVERCLIENT ()] } Eff IO ()
 receive' = do
@@ -53,13 +94,13 @@ receive' = do
     | FatalError err => do putStr ("Error receiving: " ++ (show err))
                            tcpFinalise
     | ConnectionClosed => return ()
-  OperationSuccess _ <- tcpSend (handleCommand current (trim str))
+  OperationSuccess _ <- tcpSend (!(handleCommand (trim str)))
     | RecoverableError err => do putStr ("Error sending: " ++ (show err))
                                  tcpClose
     | FatalError err => do putStr ("Error sending: " ++ (show err))
                            tcpFinalise
     | ConnectionClosed => return ()
-  put current
+
   let c = !get
   putStrLn $ "You have received " ++ show c ++ " messages"
   receive'

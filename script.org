@@ -1,0 +1,44 @@
+
+* type level
+
+  make repl
+
+  t1
+  :x print . toBoard $ game0
+  t3
+  :x print . toBoard $ game1
+  t5
+  :x print . toBoard $ game2
+
+
+  move n X $ move sw O $ move ne X $ game0
+  :x print . toBoard $ move n X $ move sw O $ move ne X $ game0
+
+  move c X $ move n X $ move sw O $ move ne X $ game0
+
+  move c O $ move n X $ move sw O $ move ne X $ game0
+  :x print . toBoard $ move c O $ move n X $ move sw O $ move ne X $ game0
+
+  move nw X $ move c O $ move n X $ move sw O $ move ne X $ game0
+  :x print . toBoard $ move nw X $ move c O $ move n X $ move sw O $ move ne X $ game0
+
+  move se 0 $ move nw X $ move c O $ move n X $ move sw O $ move ne X $ game0
+
+
+* cli
+
+  :q
+  make cli
+  :x main
+  ne
+  se
+  sw
+  c
+  nw
+  n
+  w
+
+* network
+
+:q
+make serve
