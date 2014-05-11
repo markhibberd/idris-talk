@@ -11,7 +11,7 @@
   :x print . toBoard $ game2
 
 
-  move n X $ move sw O $ move ne X $ game0
+  :t move sw O $ move ne X $ game0
   :x print . toBoard $ move n X $ move sw O $ move ne X $ game0
 
   move c X $ move n X $ move sw O $ move ne X $ game0
@@ -28,7 +28,7 @@
 * cli
 
   :q
-  make cli
+make cli
   :x main
   ne
   se
